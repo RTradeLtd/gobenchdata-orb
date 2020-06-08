@@ -1,2 +1,13 @@
 version: "2.1"
 description: "a sample orb"
+commands:
+    parse:
+        parameters:
+            file:
+                description: File containing benchmark samples
+                type: string
+                default: ""
+        steps:
+            - run:
+                name: generate-results
+                command: cat "<< parameters.file >>" | gobenchdata --json gobenchdata_output.json
