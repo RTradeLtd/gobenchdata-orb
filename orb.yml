@@ -33,7 +33,11 @@ commands:
                 description: File containing benchmark samples
                 type: string
                 default: ""
+            output:
+                description: File to store parsed data into
+                type: string
+                default: "gobenchdata_output.json"
         steps:
             - run:
                 name: generate-results
-                command: cat "<< parameters.file >>" | gobenchdata --json gobenchdata_output.json
+                command: cat "<< parameters.file >>" | gobenchdata --json "<< parameters.output >>"
