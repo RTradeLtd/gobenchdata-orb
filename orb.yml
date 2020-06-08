@@ -1,6 +1,32 @@
 version: "2.1"
-description: "a sample orb"
+description: "enables convenient usage of gobenchdata via circleci"
 commands:
+    execute:
+        parameters:
+            count:
+                description: Number of benchmark iterations to run
+                type: string
+                default: "1000x"
+            match:
+                description: Name to match for determining benchmarks to run
+                type: string
+                default: ""
+            path:
+                description: Path to benchmarks to run
+                type: string
+                default: ""
+            options:
+                description: Options to pass into the `go test` command
+                type: string
+                default: "-benchmem"
+            output:
+                description: Path to output results to
+                type: string
+                default: "bench.txt"
+        steps:
+            - run:
+                name: run-benchmarks
+                command: go test -bench="<< parameters.match >>" --benchtime "<< parameters.count >>" "<< parameters.path >>" "<< parameters.options >>" > "<< parameters.output >>"
     parse:
         parameters:
             file:
