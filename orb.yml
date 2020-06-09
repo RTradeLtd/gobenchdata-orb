@@ -32,7 +32,7 @@ commands:
                 default: "600s"
         steps:
             - run:
-                name: run-benchmarks
+                name: "Run Benchmarks And Store Results"
                 command: go test -timeout="<< parameters.timeout >>" -bench="<< parameters.match >>" --benchtime "<< parameters.count >>" "<< parameters.path >>" "<< parameters.options >>" > "<< parameters.output >>"
     parse:
         parameters:
@@ -46,5 +46,5 @@ commands:
                 default: "gobenchdata_output.json"
         steps:
             - run:
-                name: generate-results
+                name: "Parse Benchmark Results And Generate GoBenchData Output"
                 command: cat "<< parameters.file >>" | gobenchdata --json "<< parameters.output >>"
