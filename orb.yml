@@ -50,14 +50,14 @@ commands:
                 command: cat "<< parameters.file >>" | gobenchdata --json "<< parameters.output >>"
     checks:
         parameters:
-            new_benchmarks:
-                description: Location of new benchmark results to compare against
-                type: string
-                default: "new_benchmarks.json"
-            old_benchmarks:
-                description: Location of base benchmark results to compare against
+            input_benchmarks_out:
+                description: Previous benchmarks to compare against
                 type: string
                 default: "benchmarks.json"
+            run_output:
+                description: New benchmarks to compare against
+                type: string
+                default: "new_benchmarks.json"
             checks_config:
                 description: Location for checks configuration file
                 type: string
@@ -69,12 +69,80 @@ commands:
             options:
                 description: Optional flags to pass into checks
                 type: string
-                default: "--flag"
+                default: "--flat"
+            clone_user:
+                description: User to use with git clone
+                type: string
+            publish_branch:
+                description: Branch data is published against
+                type: string
+                default: gh-pages
+            vcs_host:
+                description: Host to pull git repo from
+                type: string
+                default: github.com
         steps:
+            - run:
+                name: "Fetch Previous Data"
+                command: git clone https://"<< parameters.vcs_host >>"/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} /tmp/${CIRCLE_PROJECT_REPONAME}
+            - run:
+                name: "Checkout Publish Branch"
+                command: |
+                    cd /tmp/${CIRCLE_PROJECT_REPONAME}
+                    git checkout "<< parameters.publish_branch >>"
             - run:
                 name: "Compare Benchmarks"
                 command: |
-                    gobenchdata checks eval "<< parameters.old_benchmarks >>" "<< parameters.new_benchmarks >>" \
+                    cd /tmp/${CIRCLE_PROJECT_REPONAME}
+                    gobenchdata checks eval "<< parameters.input_benchmarks_out >>" "<< parameters.run_output >>" \
                         --checks.config "<< parameters.checks_config >>" \
                         --json "<< parameters.checks_output >>" \
                         "<< parameters.options >>"
+    publish:
+        parameters:
+            input_benchmarks_out:
+                description: Previous benchmarks to compare against
+                type: string
+                default: "benchmarks.json"
+            run_output:
+                description: New benchmarks to compare against
+                type: string
+                default: "new_benchmarks.json"
+            options:
+                description: Optional flags to pass into checks
+                type: string
+                default: "--flat"
+            clone_user:
+                description: User to use with git clone
+                type: string
+            publish_branch:
+                description: Branch data is published against
+                type: string
+                default: gh-pages
+            prune_count:
+                description: "Number of past runs to keep (0 = keep everything)"
+                type: integer
+            input_commit_message:
+                description: Commit message to use for publish
+                type: string
+                default: "add benchmark run for ${CIRCLE_SHA1}"
+        steps:
+            - run:
+                name: "Merge Results"
+                command: |
+                    if [[ -f "<< parameters.input_benchmarks_out >>" ]]; then
+                        gobenchdata merge "<< parameters.run_output >>" "<< parameters.input_benchmarks_out >>" \
+                            --prune "<< parameters.prune_count >>" \
+                            --json  "<< parameters.input_benchmarks_out >>" \
+                            "<< parameters.options >>"
+                    else
+                        cp "<< parameters.run_output >>" "<< parameters.input_benchmarks_out >>"
+                    fi
+            - run:
+                name: "Publish results"
+                command: |
+                    git add .
+                    git commit -m "<< parameters.input_commit_message >>"
+                    git push -f origin "<< parameters.publish_branch >>"
+
+
