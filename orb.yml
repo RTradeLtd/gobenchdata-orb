@@ -43,8 +43,38 @@ commands:
             output:
                 description: File to store parsed data into
                 type: string
-                default: "gobenchdata_output.json"
+                default: "new_benchmarks.json"
         steps:
             - run:
                 name: "Parse Benchmark Results And Generate GoBenchData Output"
                 command: cat "<< parameters.file >>" | gobenchdata --json "<< parameters.output >>"
+    checks:
+        parameters:
+            new_benchmarks:
+                description: Location of new benchmark results to compare against
+                type: string
+                default: "new_benchmarks.json"
+            old_benchmarks:
+                description: Location of base benchmark results to compare against
+                type: string
+                default: "benchmarks.json"
+            checks_config:
+                description: Location for checks configuration file
+                type: string
+                default: "gobenchdata-checks.yml"
+            checks_output:
+                description: Location to store checks comparison in
+                type: string
+                default: "checks-results.json"
+            options:
+                description: Optional flags to pass into checks
+                type: string
+                default: "--flag"
+        steps:
+            - run:
+                name: "Compare Benchmarks"
+                command: |
+                    gobenchdata checks eval "<< parameters.old_benchmarks >>" "<< parameters.new_benchmarks >>" \
+                        --checks.config "<< parameters.checks_config >>" \
+                        --json "<< parameters.checks_output >>" \
+                        "<< parameters.options >>"
