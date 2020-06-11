@@ -149,6 +149,7 @@ commands:
                     cd /tmp/${CIRCLE_PROJECT_REPONAME}
                     git config --global user.email "circleci@noreply.circleci.com"
                     git config --global user.name ${CIRCLE_USERNAME}
+                    cp "<< parameters.input_benchmarks_out >>" .
                     git add .
                     git commit -m "<< parameters.input_commit_message >>"
                     git push -f origin "<< parameters.publish_branch >>"
