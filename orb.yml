@@ -25,7 +25,7 @@ commands:
             output:
                 description: Path to output results to
                 type: string
-                default: "bench.txt"
+                default: "/tmp/bench.txt"
             timeout:
                 description: Test timeout in time.Duration values
                 type: string
@@ -39,11 +39,11 @@ commands:
             file:
                 description: File containing benchmark samples
                 type: string
-                default: "bench.txt"
+                default: "/tmp/bench.txt"
             output:
                 description: File to store parsed data into
                 type: string
-                default: "new_benchmarks.json"
+                default: "/tmp/new_benchmarks.json"
         steps:
             - run:
                 name: "Parse Benchmark Results And Generate GoBenchData Output"
@@ -53,11 +53,11 @@ commands:
             input_benchmarks_out:
                 description: Previous benchmarks to compare against
                 type: string
-                default: "benchmarks.json"
+                default: "/tmp/benchmarks.json"
             run_output:
                 description: New benchmarks to compare against
                 type: string
-                default: "new_benchmarks.json"
+                default: "/tmp/new_benchmarks.json"
             checks_config:
                 description: Location for checks configuration file
                 type: string
@@ -70,29 +70,27 @@ commands:
                 description: Optional flags to pass into checks
                 type: string
                 default: "--flat"
-            clone_user:
-                description: User to use with git clone
-                type: string
             publish_branch:
                 description: Branch data is published against
                 type: string
                 default: gh-pages
-            vcs_host:
-                description: Host to pull git repo from
-                type: string
-                default: github.com
         steps:
             - run:
-                name: "Fetch Previous Data"
-                command: git clone https://"<< parameters.vcs_host >>"/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} /tmp/${CIRCLE_PROJECT_REPONAME}
-            - run:
-                name: "Checkout Publish Branch"
+                name: "Fetch Previous Data And Checkout Publish Branch"
                 command: |
+                    git clone https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} /tmp/${CIRCLE_PROJECT_REPONAME}
                     cd /tmp/${CIRCLE_PROJECT_REPONAME}
                     git checkout "<< parameters.publish_branch >>"
+                    if [[ ! -f benchmarks.json ]]; then
+                        exit 0
+                    fi
+                    cp benchmarks.json /tmp
             - run:
                 name: "Compare Benchmarks"
                 command: |
+                    if [[ ! -f /tmp/benchmarks.json ]]; then
+                        exit 0 
+                    fi
                     cd /tmp/${CIRCLE_PROJECT_REPONAME}
                     gobenchdata checks eval "<< parameters.input_benchmarks_out >>" "<< parameters.run_output >>" \
                         --checks.config "<< parameters.checks_config >>" \
@@ -103,18 +101,15 @@ commands:
             input_benchmarks_out:
                 description: Previous benchmarks to compare against
                 type: string
-                default: "benchmarks.json"
+                default: "/tmp/benchmarks.json"
             run_output:
                 description: New benchmarks to compare against
                 type: string
-                default: "new_benchmarks.json"
+                default: "/tmp/new_benchmarks.json"
             options:
                 description: Optional flags to pass into checks
                 type: string
                 default: "--flat"
-            clone_user:
-                description: User to use with git clone
-                type: string
             publish_branch:
                 description: Branch data is published against
                 type: string
@@ -122,11 +117,21 @@ commands:
             prune_count:
                 description: "Number of past runs to keep (0 = keep everything)"
                 type: integer
+                default: 0
             input_commit_message:
                 description: Commit message to use for publish
                 type: string
                 default: "add benchmark run for ${CIRCLE_SHA1}"
         steps:
+            - run:
+                # this will not run if publish is called after checks
+                name: "Clone And Checkout Publish Branch"
+                command: |
+                    if [[ ! -d /tmp/${CIRCLE_PROJECT_REPONAME} ]]; then
+                        git clone https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME} /tmp/${CIRCLE_PROJECT_REPONAME}
+                        cd /tmp/${CIRCLE_PROJECT_REPONAME}
+                        git checkout "<< parameters.publish_branch >>"
+                    fi
             - run:
                 name: "Merge Results"
                 command: |
@@ -141,6 +146,9 @@ commands:
             - run:
                 name: "Publish results"
                 command: |
+                    cd /tmp/${CIRCLE_PROJECT_REPONAME}
+                    git config --global user.email "circleci@noreply.circleci.com"
+                    git config --global user.name ${CIRCLE_USERNAME}
                     git add .
                     git commit -m "<< parameters.input_commit_message >>"
                     git push -f origin "<< parameters.publish_branch >>"
